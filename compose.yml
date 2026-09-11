@@ -1,0 +1,48 @@
+services:
+  http-server-projeto-korp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: http-server-projeto-korp:dev
+    container_name: http-server-projeto-korp
+
+    expose:
+      - "8080"
+
+    networks:
+      - korp-backend
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
+    read_only: true
+
+    cap_drop:
+      - ALL
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: korp-nginx
+
+    depends_on:
+      - http-server-projeto-korp
+
+    ports:
+      - "80:80"
+
+    volumes:
+      - ./nginx/http-server-projeto-korp.conf:/etc/nginx/conf.d/default.conf:ro
+
+    networks:
+      - korp-backend
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  korp-backend:
+    driver: bridge
