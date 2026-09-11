@@ -1,0 +1,69 @@
+---
+- name: Aguardar NGINX ficar disponível
+  ansible.builtin.uri:
+    url: http://localhost/projeto-korp
+    method: GET
+    status_code: 200
+  register: nginx_ready
+  retries: 10
+  delay: 3
+  until: nginx_ready.status == 200
+
+- name: Validar endpoint principal da aplicação
+  ansible.builtin.uri:
+    url: http://localhost/projeto-korp
+    method: GET
+    return_content: true
+    status_code: 200
+  register: application_response
+
+- name: Validar conteúdo da resposta da aplicação
+  ansible.builtin.assert:
+    that:
+      - application_response.json.nome == "Projeto Korp"
+      - application_response.json.horario is defined
+      - application_response.json.horario | length > 0
+    fail_msg: "Resposta da aplicação inválida."
+    success_msg: "Endpoint principal validado com sucesso."
+
+- name: Exibir resposta da aplicação
+  ansible.builtin.debug:
+    var: application_response.json
+
+- name: Validar saúde do Prometheus
+  ansible.builtin.uri:
+    url: http://localhost:9090/-/healthy
+    method: GET
+    return_content: true
+    status_code: 200
+  register: prometheus_health
+
+- name: Validar conteúdo da resposta do Prometheus
+  ansible.builtin.assert:
+    that:
+      - "'Prometheus Server is Healthy' in prometheus_health.content"
+    fail_msg: "Prometheus não está saudável."
+    success_msg: "Prometheus está saudável."
+
+- name: Validar saúde do Grafana
+  ansible.builtin.uri:
+    url: http://localhost:3000/api/health
+    method: GET
+    return_content: true
+    status_code: 200
+  register: grafana_health
+
+- name: Validar conteúdo da resposta do Grafana
+  ansible.builtin.assert:
+    that:
+      - grafana_health.json.database == "ok"
+    fail_msg: "Grafana não está saudável."
+    success_msg: "Grafana está saudável."
+
+- name: Exibir resumo da validação
+  ansible.builtin.debug:
+    msg:
+      - "Aplicação: {{ application_response.json.nome }}"
+      - "Horário UTC: {{ application_response.json.horario }}"
+      - "Prometheus: saudável"
+      - "Grafana: saudável"
