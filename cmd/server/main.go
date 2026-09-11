@@ -6,12 +6,41 @@ import (
 	"time"
 
 	"github.com/jacivaldocarvalho/http-server-projeto-korp-dashboard.json/internal/httpapi"
+	"github.com/jacivaldocarvalho/http-server-projeto-korp-dashboard.json/internal/observability"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
+	registry := prometheus.NewRegistry()
+
+	registry.MustRegister(
+		prometheus.NewGoCollector(),
+		prometheus.NewProcessCollector(
+			prometheus.ProcessCollectorOpts{},
+		),
+	)
+
+	metrics := observability.NewMetrics(registry)
+
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/projeto-korp", httpapi.ProjetoKorpHandler)
+	mux.Handle(
+		"/projeto-korp",
+		metrics.Instrument(
+			"/projeto-korp",
+			http.HandlerFunc(httpapi.ProjetoKorpHandler),
+		),
+	)
+
+	mux.Handle(
+		"/metrics",
+		promhttp.HandlerFor(
+			registry,
+			promhttp.HandlerOpts{},
+		),
+	)
 
 	server := &http.Server{
 		Addr:              ":8080",
