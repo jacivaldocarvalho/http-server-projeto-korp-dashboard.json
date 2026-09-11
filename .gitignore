@@ -1,0 +1,20 @@
+# Go binaries
+/server
+/bin/
+*.exe
+*.out
+
+# Test/build artifacts
+coverage.out
+coverage.html
+
+# Environment / secrets
+.env
+*.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
