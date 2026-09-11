@@ -1,0 +1,75 @@
+---
+- name: Verificar família do sistema operacional
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == "Debian"
+    fail_msg: "Este playbook suporta atualmente sistemas Debian/Ubuntu."
+    success_msg: "Sistema operacional compatível."
+
+- name: Instalar dependências do repositório Docker
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+    update_cache: true
+
+- name: Criar diretório de keyrings do APT
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Baixar chave GPG oficial do Docker
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+
+- name: Configurar repositório oficial do Docker
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else ansible_architecture }}
+      signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/{{ ansible_distribution | lower }}
+      {{ ansible_distribution_release }} stable
+    filename: docker
+    state: present
+
+- name: Instalar Docker Engine e Compose
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Garantir Docker iniciado e habilitado
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Verificar versão do Docker
+  ansible.builtin.command:
+    cmd: docker --version
+  register: docker_version
+  changed_when: false
+
+- name: Exibir versão do Docker
+  ansible.builtin.debug:
+    var: docker_version.stdout
+
+- name: Verificar Docker Compose
+  ansible.builtin.command:
+    cmd: docker compose version
+  register: compose_version
+  changed_when: false
+
+- name: Exibir versão do Docker Compose
+  ansible.builtin.debug:
+    var: compose_version.stdout

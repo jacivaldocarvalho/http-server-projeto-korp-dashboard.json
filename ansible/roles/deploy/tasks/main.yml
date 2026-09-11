@@ -1,0 +1,39 @@
+---
+- name: Verificar diretório do projeto
+  ansible.builtin.stat:
+    path: "{{ project_dir }}"
+  register: project_directory
+
+- name: Validar diretório do projeto
+  ansible.builtin.assert:
+    that:
+      - project_directory.stat.exists
+      - project_directory.stat.isdir
+    fail_msg: "Diretório do projeto não encontrado: {{ project_dir }}"
+    success_msg: "Diretório do projeto localizado em {{ project_dir }}"
+
+- name: Verificar arquivo Docker Compose
+  ansible.builtin.stat:
+    path: "{{ project_dir }}/compose.yml"
+  register: compose_file
+
+- name: Validar arquivo Docker Compose
+  ansible.builtin.assert:
+    that:
+      - compose_file.stat.exists
+      - compose_file.stat.isreg
+    fail_msg: "Arquivo compose.yml não encontrado em {{ project_dir }}"
+    success_msg: "Arquivo compose.yml localizado."
+
+- name: Buildar e iniciar ambiente Docker Compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ project_dir }}"
+    files:
+      - compose.yml
+    state: present
+    build: policy
+  register: compose_deploy
+
+- name: Exibir ações realizadas pelo Docker Compose
+  ansible.builtin.debug:
+    var: compose_deploy.actions
