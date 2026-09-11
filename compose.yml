@@ -1,0 +1,108 @@
+services:
+  http-server-projeto-korp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: http-server-projeto-korp:dev
+    container_name: http-server-projeto-korp
+
+    expose:
+      - "8080"
+
+    networks:
+      - korp-backend
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
+    read_only: true
+
+    cap_drop:
+      - ALL
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: korp-nginx
+
+    depends_on:
+      - http-server-projeto-korp
+
+    ports:
+      - "80:80"
+
+    volumes:
+      - ./nginx/http-server-projeto-korp.conf:/etc/nginx/conf.d/default.conf:ro
+
+    networks:
+      - korp-backend
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    container_name: korp-prometheus
+
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+    ports:
+      - "127.0.0.1:9090:9090"
+
+    networks:
+      - korp-backend
+
+    depends_on:
+      - http-server-projeto-korp
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
+  grafana:
+    image: grafana/grafana:13.2.1
+    container_name: korp-grafana
+
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+    networks:
+      - korp-backend
+
+    depends_on:
+      - prometheus
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  korp-backend:
+    name: korp-backend
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:

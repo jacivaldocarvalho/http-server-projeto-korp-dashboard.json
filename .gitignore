@@ -18,3 +18,8 @@ coverage.html
 
 # OS
 .DS_Store
+
+# Logs
+logs/
+*.log
+*.bkp
