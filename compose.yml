@@ -43,6 +43,36 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    container_name: korp-prometheus
+
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+    ports:
+      - "9090:9090"
+
+    networks:
+      - korp-backend
+
+    depends_on:
+      - http-server-projeto-korp
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
 networks:
   korp-backend:
     driver: bridge
+
+volumes:
+  prometheus-data:
