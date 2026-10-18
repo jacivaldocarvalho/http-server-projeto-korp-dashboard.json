@@ -44,6 +44,7 @@ Somente o NGINX é exposto externamente. Prometheus e Grafana são publicados ap
 - Prometheus
 - Grafana
 - Ansible
+- Makefile (automação de comandos operacionais)
 
 ## API
 
@@ -95,6 +96,52 @@ Serviços locais:
 | Grafana | `http://localhost:3000` |
 | Prometheus | `http://localhost:9090` |
 
+## Comandos de desenvolvimento e operação
+
+O projeto disponibiliza um `Makefile` que centraliza comandos de desenvolvimento, execução, validação e provisionamento, simplificando a operação do ambiente.
+
+Para visualizar os comandos disponíveis:
+
+```bash
+make help
+```
+
+| Comando | Descrição |
+|---|---|
+| `make help` | Lista os comandos disponíveis |
+| `make fmt` | Formata o código Go |
+| `make test` | Executa os testes |
+| `make vet` | Executa análise estática |
+| `make check` | Formata e valida o código Go |
+| `make build` | Compila a aplicação |
+| `make up` | Inicia a infraestrutura |
+| `make rebuild` | Reconstrói as imagens e inicia os containers |
+| `make down` | Encerra a stack sem remover volumes |
+| `make restart` | Reinicia os containers |
+| `make ps` | Exibe o estado dos containers |
+| `make logs` | Acompanha os logs dos serviços |
+| `make validate` | Valida API, Prometheus e Grafana |
+| `make ansible-deps` | Instala a collection necessária do Ansible |
+| `make ansible-check` | Verifica a sintaxe do playbook |
+| `make provision` | Executa o provisionamento com Ansible |
+| `make clean` | Remove artefatos locais de build |
+
+Exemplo de utilização:
+
+```bash
+make check
+make up
+make validate
+```
+
+Para acompanhar os logs de um serviço específico:
+
+```bash
+make logs SERVICE=nginx
+```
+
+O Makefile funciona como interface operacional, mantendo o Docker Compose responsável pela execução dos containers e o Ansible pelo provisionamento e validação automatizada da infraestrutura.
+
 ## Provisionamento com Ansible
 
 Instale a collection necessária:
@@ -110,6 +157,13 @@ ansible-playbook \
   -i ansible/inventory/hosts.ini \
   ansible/site.yml \
   --ask-become-pass
+```
+
+Alternativamente, utilizando o Makefile:
+
+```bash
+make ansible-deps
+make provision
 ```
 
 O playbook executa três etapas:
@@ -132,7 +186,7 @@ O Grafana é provisionado automaticamente com datasource Prometheus e dashboard 
 - total e volume de requisições;
 - latência P95;
 - requisições por status HTTP.
-  
+
 ![Dashboard de observabilidade do Projeto Korp](docs/images/projeto-korp-grafana.png)
 
 ## Segurança
@@ -154,6 +208,7 @@ A solução aplica algumas práticas de hardening:
 .
 ├── ansible/                 # Provisionamento e validação
 ├── cmd/server/              # Entry point da aplicação Go
+├── docs/                    # Imagens e documentação
 ├── internal/
 │   ├── httpapi/             # Handler HTTP e testes
 │   └── observability/       # Métricas Prometheus
@@ -162,6 +217,7 @@ A solução aplica algumas práticas de hardening:
 ├── prometheus/              # Configuração de scraping
 ├── compose.yml
 ├── Dockerfile
+├── Makefile                 # Comandos de desenvolvimento e operação
 ├── go.mod
 └── README.md
 ```
@@ -177,6 +233,14 @@ ansible-playbook \
   -i ansible/inventory/hosts.ini \
   ansible/site.yml \
   --syntax-check
+```
+
+Também é possível executar as verificações utilizando o Makefile:
+
+```bash
+make check
+make ansible-check
+make validate
 ```
 
 O ambiente é considerado saudável quando a API responde em `/projeto-korp`, o target da aplicação está `UP` no Prometheus e Grafana/Prometheus passam nas verificações executadas pelo Ansible.
