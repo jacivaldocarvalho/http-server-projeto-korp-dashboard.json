@@ -1,0 +1,80 @@
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go - Quality and Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check formatting
+        run: |
+          files="$(gofmt -l cmd internal)"
+          if [ -n "$files" ]; then
+            echo "$files"
+            exit 1
+          fi
+
+      - name: Run tests
+        run: go test -race ./...
+
+      - name: Static analysis
+        run: go vet ./...
+
+      - name: Build application
+        run: go build -o /tmp/http-server-projeto-korp ./cmd/server
+
+  infrastructure:
+    name: Infrastructure - Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose
+        run: docker compose config --quiet
+
+      - name: Install Ansible
+        run: |
+          python3 -m pip install --user ansible-core
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install Ansible collections
+        run: |
+          ansible-galaxy collection install \
+            -r ansible/requirements.yml
+
+      - name: Validate Ansible syntax
+        run: |
+          ansible-playbook \
+            -i ansible/inventory/hosts.ini \
+            ansible/site.yml \
+            --syntax-check
+
+      - name: Build Docker image
+        run: docker build -t http-server-projeto-korp:ci .
+
